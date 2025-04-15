@@ -7,7 +7,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Adjust for production
+    allow_origins=["*"],  # Adjust for production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -72,50 +72,14 @@ async def handle_candidate_stage_change(request: Request):
     if not application:
         raise HTTPException(status_code=400, detail="Missing application data")
 
-    # # Extract relevant details
-    # candidate = application.get("candidate", {})
-    # candidate_id = candidate.get("id", "N/A")
-    # candidate_name = candidate.get("name", "Unknown Candidate")
-    # candidate_email = candidate.get("primaryEmailAddress", {}).get("value", "N/A")
-
-    # job = application.get("job", {})
-    # job_id = job.get("id", "N/A")
-    # job_title = job.get("title", "Unknown Job")
-
-    # stage = application.get("currentInterviewStage", {})
-    # stage_name = stage.get("title", "Unknown Stage")
-
-    # application_status = application.get("status", "N/A")
-    # updated_at = application.get("updatedAt", "N/A")
-
-    # # Include custom fields
-    # custom_fields = application.get("customFields", [])
-    # custom_fields_text = (
-    #     "\n".join([f"{field['title']}: {field['value']}" for field in custom_fields])
-    #     if custom_fields
-    #     else "None"
-    # )
-
-    # # Send email
-    # subject = f"Candidate Stage Changed: {candidate_name} - {job_title}"
-    # body = (
-    #     f"Candidate: {candidate_name}\n"
-    #     f"Email: {candidate_email}\n"
-    #     f"Job: {job_title}\n"
-    #     f"New Stage: {stage_name}\n"
-    #     f"Application Status: {application_status}\n"
-    #     f"Updated At: {updated_at}\n"
-    #     f"Custom Fields:\n{custom_fields_text}"
-    # )
-    # success = EmailService.send_email(subject, body)
-
-    # if not success:
-    #     raise HTTPException(status_code=500, detail="Failed to send email")
-
     # Extract relevant details
     candidate = application.get("candidate", {})
     candidate_id = candidate.get("id", "N/A")
     candidate_name = candidate.get("name", "Unknown Candidate")
+    candidate_email = candidate.get("primaryEmailAddress", {}).get("value", "N/A")
+
+    stage = application.get("currentInterviewStage", {})
+    stage_name = stage.get("title", "Unknown Stage")
 
     job = application.get("job", {})
     job_id = job.get("id", "N/A")
@@ -127,6 +91,19 @@ async def handle_candidate_stage_change(request: Request):
     # Generate and upload assessment file
     file_path = AshbyService.generate_assessment_pdf(candidate_name, job_title, job_id)
     success = AshbyService.upload_file_to_candidate(candidate_id, file_path)
+
+    # Send email
+    subject = f"Candidate Stage Changed: {candidate_name} - {job_title}"
+    body = (
+        f"Candidate: {candidate_name}\n"
+        f"Email: {candidate_email}\n"
+        f"Job: {job_title}\n"
+        f"New Stage: {stage_name}\n"
+    )
+    success = EmailService.send_email(subject, body)
+
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to send email")
 
     return {"status": "success"}
 
